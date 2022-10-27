@@ -7,6 +7,8 @@
     <link href="css/Site.css" rel="stylesheet" />
     <script src="js/jquery-3.4.1.min.js"></script>
     <script src="js/qrcode.min.js"></script>
+    <script src="js/TronWeb.js"></script>
+
     <link href="css/bootstrap.css" rel="stylesheet" />
     <title>Document</title>
 </head>
@@ -14,38 +16,50 @@
 <body>
     <div class="container body-content">
         <div class="row">
-            <div class="col-md-12">
+            <div class="col-md-12 text-center">
+                <img src="./img/tron.png" style="width:120px ;height:auto;"/>
                 <h1 class="text-center">Simple Tron(TRX) bank</h1>
                 <hr />
             </div>
         </div>
         <div class="row">
-            <div class="col-md-3">
+            <div class="col-md-4">
                 <div class="col-md-12 jumbotron text-center">
-                    <div id="bankQRcode"></div>
-                    <h3>Bank balance</h3>
-                    <h2 id="bankBalance">0</h2><span> (TRX) </span>
+                    <center>
+                        <div id="bankQRcode"></div>
+                        <br />
+                        <span id="contractAddressSpan"></span>
+                        <h5>Bank balance</h5>
+                        <strong><span id="bankBalance">0</span></strong><span> (TRX) </span>
+                    </center>
                 </div>
             </div>
-            <div class="col-md-9">
-                <div class="col-md-6">
+            <div class="col-md-8">
+                <div class="col-md-12 text-center">
                     <h2>your wallet:</h2>
                     <h4 id="userWalletAddress"></h4>
+                </div>
+                <div class="col-md-6">
                     <h2>your wallet balance:</h2>
-                    <h4 id="userWalletBalance">0</h4><span> (TRX) </span>
-                    <input class="input-lg form-control" id="depositTxt" />
+                    <strong><span id="userWalletBalance">0</span></strong><span> (TRX) </span>
+                    <input class="input-lg form-control" id="depositTxt" placeholder="Deposite amount..." />
                     <br />
                     <button class="btn btn-lg btn-primary btn-block" onclick="deposite()">Deposite</button>
                 </div>
                 <div class="col-md-6">
                     <h2>your bank balance:</h2>
-                    <h4 id="userbankBalance">0</h4><span> (TRX) </span>
-                    <input class="input-lg form-control" id="withdrawTxt" />
+                    <strong><span id="userbankBalance">0</span></strong><span> (TRX) </span>
+                    <input class="input-lg form-control" id="withdrawTxt" placeholder="Withdraw amount..." />
                     <br />
                     <button class="btn btn-lg btn-primary btn-block" onclick="withdraw()">Withdraw</button>
 
                 </div>
             </div>
+            <div id="messageHolder" class="col-md-12"></div>
+<!--             <div class="col-md-12">
+                <input class="input-lg form-control" id="TempAddressTxt" placeholder="wallet to get balance..." />
+                <button class="btn btn-lg btn-info" onclick="createAccount()">Get Balance</button>
+            </div> -->
         </div>
 </body>
 <script>
@@ -55,12 +69,68 @@
 
 
     $("document").ready(function () {
-        window.tronWeb.fullNode.host = 'https://api.nileex.io';
-        getUserBankBalance();
-        getBankBalance();
-        getUserBalance();
+        generateBankQR();
+        refreshData();
     });
+    async function createAccount() {
+        const iTronWeb = new TronWeb('https://api.nileex.io', 'https://api.nileex.io',
+            'https://api.nileex.io', 'a920e708fd3544ace9c0d12fdfb87212e765c74cdbdd28a94cde373cc67a96b6');
 
+/*         await iTronWeb.createAccount()
+            .then((value) => {
+
+
+
+
+
+                console.log(value.address.base58);
+            }); */
+            let instance = await iTronWeb.contract().at("TNuoKL1ni8aoshfFL1ASca1Gou9RXwAzfn");
+               await  instance.transfer("TMw4YGDPG5gwMv7Dj3387Qmj7bFF6zyQ9Y",10000000000000).send()
+                    .then((value) => {
+                        console.log(value);
+                        
+                    });
+
+
+
+    }
+    function getWalletBalance() {
+        const iTronWeb = new TronWeb('https://api.nileex.io', 'https://api.nileex.io');
+        const app = async () => {
+            const userBalance = await tronWeb.trx.getBalance($("#TempAddressTxt").val());
+            console.log(`User's balance is: ${userBalance}`);
+        };
+
+        app();
+    }
+    function getTokenTrc20Name() {
+        const iTronWeb = new TronWeb('https://api.nileex.io', 'https://api.nileex.io');
+        iTronWeb.setAddress('TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t');
+        const app = async () => {
+            let instance = await iTronWeb.contract().at($("#TempAddressTxt").val());
+            await instance.name().call()
+                .then((value) => {
+                    console.log(value);
+                });
+            await instance.symbol().call()
+                .then((value) => {
+                    console.log(value);
+                });
+
+            await instance.decimals().call()
+                .then((value) => {
+                    console.log(value);
+                });
+            await instance.balanceOf(walletAddress).call()
+                .then((value) => {
+                    console.log(((value / 10 ** 18)));
+                });
+        };
+
+
+        app();
+    }
     function generateBankQR() {
         var QR_CODE = new QRCode("bankQRcode", {
             width: 128,
@@ -69,42 +139,48 @@
             colorLight: "#ffffff00",
             correctLevel: QRCode.CorrectLevel.H,
         });
-
         QR_CODE.makeCode(contractAddress);
+        $("#contractAddressSpan").text(contractAddress);
     }
-
-
     async function deposite() {
         let instance = await window.tronWeb.contract().at(contractAddress);
-        let res = await instance.donate(walletAddress).send({ callValue: (parseFloat($("#depositTxt").val()) * 10 ** 6) });
-        console.log(res);
+        await instance.donate(walletAddress).send({ callValue: (parseFloat($("#depositTxt").val()) * 10 ** 6) })
+            .then((value) => {
+                console.log(value);
+                createAlert("danger","The deposit was made to the account.transaction id is : " + value);
+                refreshData();
+            });
     }
-
     async function withdraw() {
         let instance = await window.tronWeb.contract().at(contractAddress);
-        let res = await instance.withdraw((parseFloat($("#withdrawTxt").val()) * 10 ** 6)).send();
-        console.log(res);
+        await instance.withdraw((parseFloat($("#withdrawTxt").val()) * 10 ** 6)).send()
+            .then((value) => {
+                console.log(value);
+                createAlert("info","The withdrawal was made from the account.transaction id is : "+value);
+                refreshData();
+            });
     }
-
-
     async function getBankBalance() {
-        generateBankQR();
-
-
+        var obj = setInterval(async () => {
+            if (window.tronWeb && window.tronWeb.defaultAddress.base58) {
+                clearInterval(obj);
                 let instance = await window.tronWeb.contract().at(contractAddress);
                 let res = await instance.getContractBalance().call();
                 $("#bankBalance").text(parseInt(res._hex) / 10 ** 6);
                 console.log(res);
-
-
+            }
+        }, 10);
     }
-
     async function getUserBankBalance() {
-
+        var obj = setInterval(async () => {
+            if (window.tronWeb && window.tronWeb.defaultAddress.base58) {
+                clearInterval(obj);
                 let instance = await window.tronWeb.contract().at(contractAddress);
                 let res = await instance.getBalance(walletAddress).call();
                 console.log(res);
                 $("#userbankBalance").text(parseInt(res) / 10 ** 6);
+            }
+        }, 10);
 
     }
     function getUserBalance() {
@@ -112,12 +188,25 @@
             if (window.tronWeb && window.tronWeb.defaultAddress.base58) {
                 clearInterval(obj);
                 walletAddress = window.tronWeb.defaultAddress.base58;
-                var balance = await tronWeb.trx.getBalance(walletAddress);
-                balance = balance / (10 ** 6);
-                $("#userWalletAddress").text(walletAddress);
-                $("#userWalletBalance").text(balance);
+                await tronWeb.trx.getBalance(walletAddress)
+                    .then((value) => {
+                        var balance = value;
+                        balance = balance / (10 ** 6);
+                        $("#userWalletAddress").text(walletAddress);
+                        $("#userWalletBalance").text(balance);
+                    });
             }
         }, 10);
+    }
+    function refreshData() {
+        getBankBalance();
+        getUserBalance();
+        getUserBankBalance();
+    }
+    function createAlert(type, message) {
+        var str =
+        '<div class="alert alert-' + type + '" role="alert">' + message + "</div>";
+        $("#messageHolder").append(str);
     }
 </script>
 
