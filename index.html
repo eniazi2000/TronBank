@@ -8,7 +8,6 @@
     <script src="js/jquery-3.4.1.min.js"></script>
     <script src="js/qrcode.min.js"></script>
     <script src="js/TronWeb.js"></script>
-
     <link href="css/bootstrap.css" rel="stylesheet" />
     <title>Document</title>
 </head>
@@ -144,7 +143,8 @@
     }
     async function deposite() {
         let instance = await window.tronWeb.contract().at(contractAddress);
-        await instance.donate(walletAddress).send({ callValue: (parseFloat($("#depositTxt").val()) * 10 ** 6) })
+        await instance.donate(walletAddress)
+        .send({ callValue: (parseFloat($("#depositTxt").val()) * 10 ** 6) })
             .then((value) => {
                 console.log(value);
                 createAlert("danger","The deposit was made to the account.transaction id is : " + value);
@@ -195,6 +195,10 @@
                         $("#userWalletAddress").text(walletAddress);
                         $("#userWalletBalance").text(balance);
                     });
+            }
+            else
+            {
+                $("#userWalletAddress").text("Please install and active tronlink!....");
             }
         }, 10);
     }

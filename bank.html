@@ -1,0 +1,191 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <script src="./js/jquery-3.4.1.min.js"></script>
+    <script src="./js/bootstrap.min.js"></script>
+    <script src="./js/qrcode.min.js"></script>
+    <link href="./css/bootstrap.css" rel="stylesheet"/>
+   
+    <title>Tron banking</title>
+</head>
+<body>
+<div class="container body-content">
+    <div class="row">
+        <div class="col-md-12 text-center">
+            <img src="./img/tron.png" style="width:120px;height: auto;"/>
+            <h1>Simple Tron (TRX) Bank</h1>
+            <hr/>
+        </div>
+        <div class="col-md-4 text-center">
+           <div class="col-md-12 text-center jumbotron">
+            <center>
+            <div id="bankQRcode"></div>
+            <h6 id="contractAddress">TREHhrEVXTmiThEL352jigwNMfMznnG19A</h4>
+            <h4>bank balance:</h4>
+            <strong><span id="bankBalance">0</span></strong><span> (TRX)</span>
+        </center>
+           </div>
+
+        </div>
+        <div class="col-md-8">
+          <div class="row">
+            <div class="col-md-12 text-center">
+                <h2>your wallet address:</h2>
+                <h4 id="userWalletAddress">TN4SdCgnNsoAXnF61Hg7oTfKCsuUwYj5Uw</h4>
+            </div>
+            <div class="col-md-6">
+                <h2>your wallet balance:</h2>
+                <strong><span id="userWalletBalance">0</span></strong><span> (TRX)</span>
+                <input id="depositeTxt" class="input-lg btn-block" placeholder="amount to deposit..."/>
+                <button onclick="deposit()" class="btn btn-lg btn-primary btn-block">Deposite</button>
+            </div>
+            <div class="col-md-6 ">
+                <h2>your bank balance:</h2>
+                <strong><span id="userContractBalance">0</span></strong><span> (TRX)</span>
+                <input id="withdrawTxt" class="input-lg btn-block" placeholder="amount to withdraw..."/>
+                <button onclick="withdraw()" class="btn btn-lg btn-primary btn-block">Withdraw</button>
+            </div>
+          </div>
+        </div>
+        <div id="logger" class="col-md-12"></div>
+
+    </div>
+
+
+
+</div>
+
+
+
+
+
+    
+</body>
+
+<script>
+    const contractAddress = "TWQWS6eZ6gmZyhy3Vo5GXsDd9bSoUj22CK";
+    var walletAddress = "";
+
+    $("document").ready(function(){
+
+        generateBankQR();
+        refreshData();
+    });
+
+    async function deposit()
+    {
+        var amount = parseFloat($("#depositeTxt").val()) * 10**6;
+        let instance = await window.tronWeb.contract().at(contractAddress);
+        await instance.deposite().send({callValue : amount })
+        .then((value)=>{
+            refreshData();
+            createAlert("warning","your transaction id of deposite : " + value);
+        })
+        .catch((error)=>{
+            if(error.message)
+            createAlert("danger","error : " + error.message);
+            else
+            createAlert("danger","error : " + error);
+
+        });
+    }
+
+    async function withdraw()
+    {
+        var amount = parseFloat($("#withdrawTxt").val()) * 10 ** 6;
+        let instance = await window.tronWeb.contract().at(contractAddress);
+        await instance.withdraw(amount).send()
+        .then((value)=>{
+            createAlert("info","your transaction id of withdraw : " + value);
+            refreshData();
+        })
+        .catch((error)=>{
+            if(error.message)
+            createAlert("danger","error : " + error.message);
+            else
+            createAlert("danger","error : " + error);
+        });
+    }
+
+    function createAlert(type, message) {
+        var str =
+        '<div class="alert alert-' + type + '" role="alert">' + message + "</div>";
+        $("#logger").append(str);
+    }
+
+
+    
+    function refreshData(){
+        getUserBalance();
+        getBankBalance();
+        getUserBankBalance();
+    }
+    async function getUserBankBalance(){
+        var obj = setInterval(async () => {
+            if (window.tronWeb && window.tronWeb.defaultAddress.base58) {
+                clearInterval(obj);
+                let instance = await window.tronWeb.contract().at(contractAddress);
+                let res = await instance.getBalance($("#userWalletAddress").text()).call();
+                    var userContractBalance = parseInt(res);
+                $("#userContractBalance").text(userContractBalance / 10 ** 6);    
+            }
+        }, 10);
+    }
+    async function getBankBalance(){
+        var obj = setInterval(async () => {
+            if (window.tronWeb && window.tronWeb.defaultAddress.base58) {
+                clearInterval(obj);
+                let instance = await window.tronWeb.contract().at(contractAddress);
+                let res = await instance.getContractBalance().call();
+                    var contractBalance = parseInt(res);
+                $("#bankBalance").text(contractBalance / 10 ** 6);    
+            }
+        }, 10);
+    }
+
+    function getUserBalance()
+    {
+        var obj = setInterval(async () => {
+            if (window.tronWeb && window.tronWeb.defaultAddress.base58) {
+                clearInterval(obj);
+                walletAddress = window.tronWeb.defaultAddress.base58;
+                $("#userWalletAddress").text(walletAddress);
+
+                await window.tronWeb.trx.getBalance(walletAddress)
+                .then((value)=>{
+                        var balance = value / 10 ** 6;
+                    $("#userWalletBalance").text(balance);
+
+
+                });
+
+
+            }
+            else
+            {
+                $("#userWalletAddress").text("Please install and active tronlink!....");
+            }
+        }, 10);
+    }
+
+    function generateBankQR() {
+        var QR_CODE = new QRCode("bankQRcode", {
+            width: 128,
+            height: 128,
+            colorDark: "#000000",
+            colorLight: "#ffffff00",
+            correctLevel: QRCode.CorrectLevel.H,
+        });
+        QR_CODE.makeCode(contractAddress);
+
+
+
+
+        $("#contractAddress").text(contractAddress);
+    }
+</script>
+
+</html>
